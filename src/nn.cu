@@ -70,4 +70,11 @@ __global__ void cross_entropy(float* x, bool* target, float* result, int batch_s
     }
 }
 
-//__global__ cross_entropy_back(float)
+__global__ void cross_entropy_softmax_back(float* softmax_output, bool* t, float* dy_by_dx, size_t size)
+{
+    int id = threadIdx.x + blockDim.x * blockIdx.x;
+    if (id < size)
+    {
+        dy_by_dx[id] = softmax_output[id] - t[id];
+    }
+}

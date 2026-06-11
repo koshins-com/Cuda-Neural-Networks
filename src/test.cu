@@ -49,6 +49,7 @@ bool check(float* y, float* t, size_t size, bool print)
         return check(y, t, size);
     }
     bool r = true;
+    printf("\t\t");
     for (int i = 0; i < size; i++)
     {
         if (abs(y[i] - t[i]) > 1E-1)
@@ -62,6 +63,34 @@ bool check(float* y, float* t, size_t size, bool print)
         }
     }
     printf("\n");
+    return r;
+}
+
+bool check(float* y, float* t, size_t rows, size_t cols, bool print)
+{
+    if (!print)
+    {
+        return check(y, t, rows * cols);
+    }
+    bool r = true;
+    for (int i = 0; i < rows; i++)
+    {
+        printf("\t\t");
+        for (int j = 0; j < cols; j++)
+        {
+            int idx = i * cols + j;
+            if (abs(y[idx] - t[idx]) > 1E-1)
+            {
+                printf("(\x1b[32m%f\x1b[0m, \x1b[31m%f\x1b[0m) ", t[idx], y[idx]);
+                r = false;
+            }
+            else
+            {
+                printf("%f ", y[idx]);
+            }
+        }
+        printf("\n");
+    }
     return r;
 }
 
@@ -335,4 +364,52 @@ bool test_cross_entropy(curandGenerator_t generator)
         print_array(dt, rows, cols);
     }
     return check(dl, dtl, rows, print);
+}
+
+bool test_cross_entropy_softmax_back(curandGenerator_t generator)
+{
+    bool print = true;
+    size_t rows = 2;
+    size_t cols = 3;
+    size_t size = rows * cols;
+    uint* temp;
+    CUDA_CALL(cudaMalloc(&temp, sizeof(uint) * size));
+    CURAND_CALL(curandGenerate(generator, temp, size));
+    float* softmax_in;
+    CUDA_CALL(cudaMalloc(&softmax_in, sizeof(float) * size));
+    dim3 gs((size + BLOCK_SIZE1D - 1) / BLOCK_SIZE1D);
+    dim3 bs(BLOCK_SIZE1D);
+    to_float<<<(size + BLOCK_SIZE1D - 1), BLOCK_SIZE1D>>>(temp, softmax_in, size);
+    float* softmax_output;
+    CUDA_CALL(cudaMalloc(&softmax_output, sizeof(float) * size));
+    dim3 gs2d((rows + BLOCK_SIZE2D - 1) / BLOCK_SIZE2D, (cols + BLOCK_SIZE2D - 1) / BLOCK_SIZE2D);
+    dim3 bs2d(BLOCK_SIZE2D, BLOCK_SIZE2D);
+    softmax<<<gs2d, bs2d>>>(softmax_output, softmax_in, rows, cols);
+    bool* t;
+    CUDA_CALL(cudaMalloc(&t, sizeof(float) * size));
+    CURAND_CALL(curandGenerate(generator, temp, size));
+    to_bool<<<gs, bs>>>(temp, t, size);
+    float* dy_by_dx;
+    CUDA_CALL(cudaMalloc(&dy_by_dx, sizeof(float) * size));
+    cross_entropy_softmax_back<<<gs, bs>>>(softmax_output, t, dy_by_dx, size);
+    float* dso = (float*) malloc(sizeof(float) * size);
+    CUDA_CALL(cudaMemcpy(dso, softmax_output, sizeof(float) * size, cudaMemcpyDeviceToHost));
+    bool* dt = (bool*) malloc(sizeof(bool) * size);
+    CUDA_CALL(cudaMemcpy(dt, t, sizeof(bool) * size, cudaMemcpyDeviceToHost));
+    float* dd = (float*) malloc(sizeof(float) * size);
+    CUDA_CALL(cudaMemcpy(dd, dy_by_dx, sizeof(float) * size, cudaMemcpyDeviceToHost));
+    float* dtd = (float*) malloc(sizeof(float) * size);
+    for (int i = 0; i < size; i++)
+    {
+        dtd[i] = dso[i] - dt[i];
+    }
+    if (print)
+    {
+        printf("\tsoft out:\n");
+        print_array(dso, rows, cols);
+        printf("\tt:\n");
+        print_array(dso, rows, cols);
+        printf("\tOutput:\n");
+    }
+    return check(dd, dtd, rows, cols, print);
 }
