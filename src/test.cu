@@ -111,7 +111,7 @@ void print_array(bool* a, size_t size)
     printf("\n");
 }
 
-bool test_mul_acc(curandGenerator_t generator)
+bool test_forward(curandGenerator_t generator)
 {
     bool print = false;
     constexpr uint rows = 1 << 6;
@@ -145,7 +145,7 @@ bool test_mul_acc(curandGenerator_t generator)
 
     constexpr dim3 bs(BLOCK_SIZE2D, BLOCK_SIZE2D);
     constexpr dim3 gs((rows + BLOCK_SIZE2D -1) / BLOCK_SIZE2D, (cols + BLOCK_SIZE2D - 1) / BLOCK_SIZE2D);
-    mul_acc<<<gs, bs>>>(x, w, b, y, rows, hids, cols);
+    forward<<<gs, bs>>>(x, w, b, y, rows, hids, cols);
 
     float* dy = (float*) malloc(sizeof(float) * county);
     CUDA_CALL(cudaMemcpy(dy, y, sizeof(float) * county, cudaMemcpyDeviceToHost));
@@ -282,7 +282,7 @@ bool test_softmax(curandGenerator_t generator)
     return check(dt, dy, size);
 }
 
-bool test_loss(curandGenerator_t generator)
+bool test_cross_entropy(curandGenerator_t generator)
 {
     bool print = false;
     constexpr size_t rows = 1 << 10;
@@ -307,7 +307,7 @@ bool test_loss(curandGenerator_t generator)
     CUDA_CALL(cudaMalloc(&l, rows * sizeof(float)));
 
     cudaDeviceSynchronize();
-    loss<<<(rows + BLOCK_SIZE1D - 1) / BLOCK_SIZE1D, BLOCK_SIZE1D>>>(y, t, l, rows, cols);
+    cross_entropy<<<(rows + BLOCK_SIZE1D - 1) / BLOCK_SIZE1D, BLOCK_SIZE1D>>>(y, t, l, rows, cols);
     cudaDeviceSynchronize();
 
     float* dy = (float*) malloc(sizeof(float) * size);
