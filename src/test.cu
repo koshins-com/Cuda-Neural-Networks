@@ -111,7 +111,7 @@ void print_array(bool* a, size_t size)
     printf("\n");
 }
 
-bool test_forward(curandGenerator_t generator)
+bool test_linear(curandGenerator_t generator)
 {
     bool print = false;
     constexpr uint rows = 1 << 6;
@@ -145,7 +145,7 @@ bool test_forward(curandGenerator_t generator)
 
     constexpr dim3 bs(BLOCK_SIZE2D, BLOCK_SIZE2D);
     constexpr dim3 gs((rows + BLOCK_SIZE2D -1) / BLOCK_SIZE2D, (cols + BLOCK_SIZE2D - 1) / BLOCK_SIZE2D);
-    forward<<<gs, bs>>>(x, w, b, y, rows, hids, cols);
+    linear<<<gs, bs>>>(x, w, b, y, rows, hids, cols);
 
     float* dy = (float*) malloc(sizeof(float) * county);
     CUDA_CALL(cudaMemcpy(dy, y, sizeof(float) * county, cudaMemcpyDeviceToHost));

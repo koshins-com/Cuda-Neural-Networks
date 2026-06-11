@@ -1,6 +1,6 @@
 #include "nn.h"
 
-__global__ void forward(float* x, float* w, float* b, float* y, int row_size, int hid_size, int col_size)
+__global__ void linear(float* x, float* w, float* b, float* y, int row_size, int hid_size, int col_size)
 {
     int row = blockDim.x * blockIdx.x + threadIdx.x;
     int col = blockDim.y * blockIdx.y + threadIdx.y;
@@ -69,3 +69,5 @@ __global__ void cross_entropy(float* x, bool* target, float* result, int batch_s
         result[id] = loss;
     }
 }
+
+//__global__ cross_entropy_back(float)

@@ -3,7 +3,7 @@
 
 #include <curand.h>
 
-bool test_forward(curandGenerator_t generator);
+bool test_linear(curandGenerator_t generator);
 
 bool test_relu(curandGenerator_t generator);
 
