@@ -13,4 +13,6 @@ __global__ void cross_entropy(float* x, bool* target, float* result, int num_row
 
 __global__ void cross_entropy_softmax_back(float* softmax_output, bool* t, float* dy_by_dx, size_t size);
 
+__global__ void relu_back(float* out, bool* d, size_t size);
+
 #endif

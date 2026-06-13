@@ -25,6 +25,9 @@ void test()
     printf("loss-softmax back:\n");
     printf(test_cross_entropy_softmax_back(generator)? "\tSuccess": "\tFailure");
     printf("\n");
+    printf("relu back:\n");
+    printf(test_relu_back(generator)? "\tSuccess": "\tFailure");
+    printf("\n");
 }
 
 int main()

@@ -78,3 +78,12 @@ __global__ void cross_entropy_softmax_back(float* softmax_output, bool* t, float
         dy_by_dx[id] = softmax_output[id] - t[id];
     }
 }
+
+__global__ void relu_back(float *out, bool *d, size_t size)
+{
+    int id = threadIdx.x + blockIdx.x * blockDim.x;
+    if (id < size)
+    {
+        d[id] = out[id] > 0;
+    }
+}

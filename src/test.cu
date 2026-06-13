@@ -42,6 +42,42 @@ bool check(float* a, float* b, size_t size)
     return true;
 }
 
+bool check(bool* a, bool* b, size_t size)
+{
+    for (int i = 0; i < size; i++)
+    {
+        if (abs(a[i] - b[i]) > 1E-1)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool check(bool* y, bool* t, size_t size, bool print)
+{
+    if (!print)
+    {
+        return check(y, t, size);
+    }
+    bool r = true;
+    printf("\t\t");
+    for (int i = 0; i < size; i++)
+    {
+        if (abs(y[i] - t[i]) > 1E-1)
+        {
+            printf("(\x1b[32m%d\x1b[0m, \x1b[31m%d\x1b[0m) ", t[i], y[i]);
+            r = false;
+        }
+        else
+        {
+            printf("%d ", y[i]);
+        }
+    }
+    printf("\n");
+    return r;
+}
+
 bool check(float* y, float* t, size_t size, bool print)
 {
     if (!print)
@@ -368,7 +404,7 @@ bool test_cross_entropy(curandGenerator_t generator)
 
 bool test_cross_entropy_softmax_back(curandGenerator_t generator)
 {
-    bool print = true;
+    bool print = false;
     size_t rows = 2;
     size_t cols = 3;
     size_t size = rows * cols;
@@ -412,4 +448,44 @@ bool test_cross_entropy_softmax_back(curandGenerator_t generator)
         printf("\tOutput:\n");
     }
     return check(dd, dtd, rows, cols, print);
+}
+
+bool test_relu_back(curandGenerator_t generator)
+{
+    bool print = false;
+    size_t size = 1 << 10;
+    uint* temp;
+    CUDA_CALL(cudaMalloc(&temp, sizeof(uint) * size));
+    CURAND_CALL(curandGenerate(generator, temp, size));
+    float* in;
+    CUDA_CALL(cudaMalloc(&in, sizeof(float) * size));
+    dim3 gs(( size + BLOCK_SIZE1D - 1 ) / size);
+    dim3 bs(BLOCK_SIZE1D);
+    to_float<<<gs, bs>>>(temp, in, size);
+    CUDA_CALL(cudaDeviceSynchronize());
+    float* out;
+    CUDA_CALL(cudaMalloc(&out, sizeof(float) * size));
+    relu<<<gs, bs>>>(out, in, size);
+    CUDA_CALL(cudaDeviceSynchronize());
+    bool* d;
+    CUDA_CALL(cudaMalloc(&d, sizeof(bool) * size));
+    relu_back<<<gs, bs>>>(out, d, size);
+    CUDA_CALL(cudaDeviceSynchronize());
+
+    float* dout = (float*) malloc(sizeof(float) * size);
+    CUDA_CALL(cudaMemcpy(dout, out, sizeof(float) * size, cudaMemcpyDeviceToHost));
+    bool* dd = (bool*) malloc(sizeof(bool) * size);
+    CUDA_CALL(cudaMemcpy(dd, d, sizeof(bool) * size, cudaMemcpyDeviceToHost));
+    bool* dt = (bool*) malloc(sizeof(bool) * size);
+    for (int i = 0; i < size; i++)
+    {
+        dt[i] = dout[i] > 0;
+    }
+    if (print)
+    {
+        printf("out:\n");
+        print_array(dout, size);
+        printf("result:\n");
+    }
+    return check(dd, dt, size, print);
 }

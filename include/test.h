@@ -13,4 +13,6 @@ bool test_cross_entropy(curandGenerator_t generator);
 
 bool test_cross_entropy_softmax_back(curandGenerator_t generator);
 
+bool test_relu_back(curandGenerator_t generator);
+
 #endif
