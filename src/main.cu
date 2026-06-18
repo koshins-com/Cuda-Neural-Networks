@@ -10,7 +10,7 @@ void test()
     CURAND_CALL(curandCreateGenerator(&generator, CURAND_RNG_PSEUDO_DEFAULT));
     CURAND_CALL(curandCreateGenerator(&generator, CURAND_RNG_PSEUDO_DEFAULT));
     CURAND_CALL(curandSetPseudoRandomGeneratorSeed(generator, time(0)));
-    printf("mul_acc: \n");
+    printf("mul_acc:\n");
     printf(test_linear(generator)? "\tSuccess": "\tFailure");
     printf("\n");
     printf("relu:\n");
@@ -27,6 +27,9 @@ void test()
     printf("\n");
     printf("relu back:\n");
     printf(test_relu_back(generator)? "\tSuccess": "\tFailure");
+    printf("\n");
+    printf("linear update:\n");
+    printf(test_linear_update(generator)? "\tSuccess": "\tFailure");
     printf("\n");
 }
 

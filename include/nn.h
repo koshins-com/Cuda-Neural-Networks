@@ -15,4 +15,13 @@ __global__ void cross_entropy_softmax_back(float* softmax_output, bool* t, float
 
 __global__ void relu_back(float* out, bool* d, size_t size);
 
+/*
+ * kernels = bs, is
+ * x = bs * hs
+ * w = hs * is
+ * d = bs * is
+ * b = is
+ * */
+__global__ void linear_back_update(float* x, float* w, float* b, float* d, float lr, size_t bs, size_t is, size_t hs);
+
 #endif

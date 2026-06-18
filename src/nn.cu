@@ -87,3 +87,31 @@ __global__ void relu_back(float *out, bool *d, size_t size)
         d[id] = out[id] > 0;
     }
 }
+
+/*
+ * kernels = bs, is
+ * x = bs * hs
+ * w = hs * is
+ * d = bs * is
+ * b = ls
+ * */
+__global__ void linear_back_update(float* x, float* w, float* b, float* d, float lr, size_t bs, size_t is, size_t hs)
+{
+    int row = blockDim.x * blockIdx.x + threadIdx.x;
+    int col = blockDim.y * blockIdx.y + threadIdx.y;
+    lr /= bs;
+    if (row >= hs || col >= is)
+    {
+        return;
+    }
+
+    float dw = 0;
+    float db = 0;
+    for (int k = 0; k < bs; k++)
+    {
+        dw += x[k * hs + row] * d[k * is + col];
+        db += d[k * is + col];
+    }
+    w[row * is + col] -= lr * dw;
+    b[col] -= lr * db;
+}

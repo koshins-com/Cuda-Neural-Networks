@@ -489,3 +489,103 @@ bool test_relu_back(curandGenerator_t generator)
     }
     return check(dd, dt, size, print);
 }
+
+void gen(curandGenerator_t generator, float** x, uint* temp, size_t size)
+{
+    CUDA_CALL(cudaMalloc(x, sizeof(float) * size));
+    CURAND_CALL(curandGenerate(generator, temp, size));
+    to_float<<<(size + BLOCK_SIZE1D - 1) / BLOCK_SIZE1D, BLOCK_SIZE1D>>>(temp, *x, size);
+    CUDA_CALL(cudaDeviceSynchronize());
+}
+
+void cp(float** dx, float* x, size_t size)
+{
+    *dx = (float*) malloc(sizeof(float) * size);
+    CUDA_CALL(cudaMemcpy(*dx, x, sizeof(float) * size, cudaMemcpyDeviceToHost));
+}
+
+bool test_linear_update(curandGenerator_t generator)
+{
+    bool print = false;
+    constexpr size_t bs = 2;
+    constexpr size_t hs = 3;
+    constexpr size_t is = 4;
+    constexpr size_t ms = MAX(bs * hs, MAX(hs * is, bs * is));
+    uint* temp;
+    CUDA_CALL(cudaMalloc(&temp, sizeof(uint) * ms));
+
+    float* x;
+    gen(generator, &x, temp, bs * hs);
+
+    float* dx;
+    cp(&dx, x, bs * hs);
+
+    float* w;
+    gen(generator, &w, temp, hs * is);
+
+    float* dtw;
+    cp(&dtw, w, hs * is);
+
+    float* b;
+    gen(generator, &b, temp, is);
+
+    float* dtb;
+    cp(&dtb, b, is);
+
+    float* d;
+    gen(generator, &d, temp, bs * is);
+
+    float* dd;
+    cp(&dd, d, bs * is);
+ 
+    dim3 gs((bs + BLOCK_SIZE2D - 1) / BLOCK_SIZE2D, (is + BLOCK_SIZE2D - 1) / BLOCK_SIZE2D);
+    float lr = 0.1;
+    linear_back_update<<<gs, dim3(BLOCK_SIZE2D, BLOCK_SIZE2D)>>>(x, w, b, d, lr, bs, is, hs);
+    lr /= bs;
+    CUDA_CALL(cudaDeviceSynchronize());
+
+    float* dw;
+    cp(&dw, w, hs * is);
+
+    float* db;
+    cp(&db, b, is);
+
+    if (print)
+    {
+        printf("\tInput\n");
+        printf("\tx:\n");
+        print_array(dx, bs, hs);
+        printf("\td:\n");
+        print_array(dd, bs, is);
+        printf("\tw:\n");
+        print_array(dtw, hs, is);
+        printf("\tb:\n");
+        print_array(dtb, is);
+    }
+
+    for (int i = 0; i < bs; i++)
+    {
+        for (int j = 0; j < is; j++)
+        {
+            float dew = 0, deb = 0;
+            for (int k = 0; k < hs; k++)
+            {
+                dew += dx[k * hs + i] * dd[k * is + j];
+                deb += dd[k * is + j];
+            }
+            dtw[i * is + j] -= lr * dew;
+            dtb[i * is + j] -= lr * deb;
+        }
+    }
+
+    if (print)
+    {
+        printf("\tOutput\n");
+        printf("\tw:\n");
+        bool a = check(dw, dtw, hs, is, true);
+        printf("\tb:\n");
+        bool b = check(db, dtb, is, true);
+        return a && b;
+    }
+    return check(dw, dtw, hs, is, false) && check(db, dtb, is, false);
+}
